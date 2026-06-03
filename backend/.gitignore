@@ -1,0 +1,33 @@
+# 🔐 1. SECURITY & API KEYS (SABSE IMPORTANT)
+.env
+.env.*
+*.pem
+secrets.json
+
+# 🐍 2. PYTHON & FASTAPI CACHE
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# 📦 3. VIRTUAL ENVIRONMENT (Heavy files jo push nahi karni)
+venv/
+env/
+.venv/
+Include/
+Lib/
+Scripts/
+
+# 📝 4. LOGS & TEMPORARY DATA
+*.log
+logs/
+temp/
+debug/
+test_outputs/
+
+# 💻 5. IDE & OS SYSTEM FILES
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

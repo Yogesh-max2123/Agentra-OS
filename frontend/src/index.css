@@ -1,0 +1,12 @@
+@import "tailwindcss";
+@custom-variant dark (&:is(.dark *)); /* Ye line add karni hai dark mode ke liye */
+
+@theme {
+  --color-primary: #1E293B;
+  --color-secondary: #3B82F6;
+  --color-accent: #10B981;
+}
+
+body {
+  @apply bg-slate-50 text-slate-900 transition-colors duration-300;
+}

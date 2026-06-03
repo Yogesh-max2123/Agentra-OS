@@ -1,0 +1,228 @@
+/* ============================================================
+   Agentra OS - Smart Itinerary Viewer CSS (Compact & Premium)
+   ============================================================ */
+
+.itinerary-container {
+    padding: 10px 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+    animation: slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.itinerary-title {
+    font-size: 26px;
+    font-weight: 900;
+    margin-bottom: 30px;
+    background: linear-gradient(135deg, #60a5fa, #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.day-section {
+    margin-bottom: 40px;
+}
+
+.day-header-block {
+    margin-bottom: 20px;
+    border-left: 4px solid #3b82f6;
+    padding-left: 12px;
+}
+
+.day-header {
+    font-size: 20px;
+    font-weight: 800;
+    color: #f8fafc;
+    margin-bottom: 2px;
+}
+
+.day-theme {
+    font-size: 12px;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* COMPACT GRID */
+.places-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+}
+
+/* SLEEK PLACE CARD */
+.place-card {
+    background: rgba(30, 41, 59, 0.6);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(51, 65, 85, 0.6);
+    border-radius: 16px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.3);
+}
+
+.place-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(96, 165, 250, 0.4);
+    box-shadow: 0 12px 25px -5px rgba(0, 0, 0, 0.5), 0 0 15px rgba(59, 130, 246, 0.15);
+}
+
+/* IMAGE WITH SHIMMER */
+.place-image-wrapper {
+    position: relative;
+    height: 150px;
+    width: 100%;
+    overflow: hidden;
+    background-color: #1e293b;
+}
+
+.place-image {
+    width: 100%;
+    height: 100%;
+    background-size: cover;
+    background-position: center;
+    transition: transform 0.5s ease;
+}
+
+.place-card:hover .place-image {
+    transform: scale(1.05);
+}
+
+.rating-badge {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    color: #f8fafc;
+    padding: 4px 8px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+/* COMPACT CONTENT */
+.place-content {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+}
+
+.place-name {
+    font-size: 16px;
+    font-weight: 800;
+    color: #f8fafc;
+    margin-bottom: 6px;
+    line-height: 1.2;
+}
+
+.place-address {
+    font-size: 11px;
+    font-weight: 600;
+    color: #94a3b8;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: flex-start;
+    gap: 4px;
+    line-height: 1.4;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.place-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 12px;
+    background: rgba(15, 23, 42, 0.5);
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px dashed rgba(71, 85, 105, 0.5);
+}
+
+.timing, .price {
+    font-size: 11px;
+    font-weight: 700;
+    color: #cbd5e1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.place-desc {
+    font-size: 12px;
+    line-height: 1.5;
+    color: #94a3b8;
+    margin-bottom: 16px;
+    flex-grow: 1;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.maps-btn {
+    width: 100%;
+    padding: 10px;
+    background: rgba(59, 130, 246, 0.1);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.place-card:hover .maps-btn {
+    background: #2563eb;
+    color: #ffffff;
+    border-color: #2563eb;
+}
+
+/* Shimmer Loading Effect */
+.loading-shimmer {
+    background: #1e293b;
+    background-image: linear-gradient(to right, #1e293b 0%, #334155 20%, #1e293b 40%, #1e293b 100%);
+    background-repeat: no-repeat;
+    background-size: 800px 100%;
+    animation-duration: 1.5s;
+    animation-fill-mode: forwards;
+    animation-iteration-count: infinite;
+    animation-name: placeholderShimmer;
+    animation-timing-function: linear;
+}
+
+@keyframes placeholderShimmer {
+    0% { background-position: -468px 0; }
+    100% { background-position: 468px 0; }
+}
+
+@keyframes slideUpFade {
+    from { opacity: 0; transform: translateY(15px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.itinerary-loader {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #94a3b8;
+    gap: 16px;
+    font-weight: 600;
+}
