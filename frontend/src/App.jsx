@@ -4,6 +4,8 @@ import { PlaneTakeoff, Train, Send, Bot, Clock, TerminalSquare, Sun, Moon, Map, 
 
 import ItineraryViewer from './components/ItineraryViewer';
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+
 const getStatusBadgeStyle = (status) => {
   if (!status) return 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700';
   const s = status.toLowerCase();
@@ -20,9 +22,8 @@ const getStatusBadgeStyle = (status) => {
 };
 
 
-// ==========================================
+
 // SMART HOTEL IMAGE COMPONENT (With Pexels Fallback)
-// ==========================================
 const HotelImage = ({ hotelName, defaultImage, className }) => {
   const [imgSrc, setImgSrc] = useState(defaultImage);
   const [hasError, setHasError] = useState(false);
@@ -33,11 +34,11 @@ const HotelImage = ({ hotelName, defaultImage, className }) => {
   }, [defaultImage]);
 
   const handleError = async () => {
-    if (hasError) return; // Infinite loop se bachne ke liye
+    if (hasError) return; 
     setHasError(true);
     
     try {
-      const apiKey = import.meta.env.VITE_PEXELS_API_KEY || process.env.REACT_APP_PEXELS_API_KEY;
+      const apiKey = import.meta.env.VITE_PEXELS_API_KEY;
       const response = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(hotelName + " hotel luxury exterior")}&per_page=1`, {
         headers: { Authorization: apiKey }
       });
@@ -57,7 +58,7 @@ const HotelImage = ({ hotelName, defaultImage, className }) => {
       src={imgSrc || `https://loremflickr.com/800/600/hotel,building`} 
       alt={hotelName} 
       className={className}
-      onError={handleError} // Agar default load nahi hui, toh Pexels trigger hoga
+      onError={handleError} 
     />
   );
 };
@@ -70,9 +71,7 @@ const loadState = (key, defaultValue) => {
   return defaultValue;
 };
 
-// ==========================================
 // COMPONENT 1: THE MAIN CHATBOT INTERFACE
-// ==========================================
 function ChatInterface() {
   const [isDarkMode, setIsDarkMode] = useState(() => loadState('nexusTheme', true));
   const [input, setInput] = useState('');
@@ -104,9 +103,9 @@ function ChatInterface() {
   const [dbBookings, setDbBookings] = useState([]);
   const [expandedBooking, setExpandedBooking] = useState(null);
   
-  // 🚨 NEW STATE: For Itinerary Management
+  //NEW STATE: For Itinerary Management
   const [currentPnr, setCurrentPnr] = useState(null);
-  const [selectedTripPnr, setSelectedTripPnr] = useState(null); // Add this!
+  const [selectedTripPnr, setSelectedTripPnr] = useState(null); 
 
   const logsEndRef = useRef(null);
   const chatEndRef = useRef(null);
@@ -125,7 +124,7 @@ function ChatInterface() {
     setLogs(prev => [...prev, { time: new Date().toLocaleTimeString(), text, type }]);
   };
 
-  // 🚨 NAYA LOGIC: Reset Only Chat Context
+
   const handleClearChat = () => {
     setMessages([
       { sender: 'agent', text: 'Hello! I am Agentra, your AI Travel Orchestrator. Where would you like to travel today?' }
@@ -142,7 +141,8 @@ function ChatInterface() {
 
   const fetchBookings = async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/bookings');
+      const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+      const res = await fetch(`${API_BASE}/api/bookings`);
       if (res.ok) {
         const data = await res.json();
         setDbBookings(data.status === "success" ? data.data : []);
@@ -170,7 +170,8 @@ function ChatInterface() {
     addLog(`Sending query to FastAPI: "${userQuery.substring(0, 30)}..."`, 'waiting');
 
     try {
-      const response = await fetch('http://localhost:8000/api/chat', {
+      const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+      const response = await fetch(`${API_BASE}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: userQuery, history: currentHistory, session_id: "guest_123" })
@@ -183,7 +184,7 @@ function ChatInterface() {
 
       let cleanMessage = data.agent_message || "";
       
-      // 🚆 PARSE TRAIN DRAFT
+      //PARSE TRAIN DRAFT
       const draftMatch = cleanMessage.match(/\[HIDDEN_DRAFT_ID:\s*(DRAFT_[A-Z0-9_]+)\]/i);
       if (draftMatch) {
           const draftId = draftMatch[1];
@@ -196,7 +197,7 @@ function ChatInterface() {
           window.open(`/checkout/${draftId}`, '_blank');
       }
 
-      // 🏨 PARSE HOTEL DRAFT
+      //PARSE HOTEL DRAFT
       const hotelDraftMatch = cleanMessage.match(/\[HIDDEN_HOTEL_DRAFT:\s*(HTL_DRAFT_[A-Z0-9_]+)\]/i);
       if (hotelDraftMatch) {
           const draftId = hotelDraftMatch[1];
@@ -243,7 +244,7 @@ function ChatInterface() {
         localStorage.removeItem('nexusPaymentSuccess');
       }
       
-      // 🚨 UPDATED: Hotel Checkout Listener
+      //Hotel Checkout Listener
       if (e.key === 'nexusHotelPaymentSuccess' && e.newValue) {
         const payload = JSON.parse(e.newValue);
         addLog(`Hotel payment successful for Room: ${payload.room_no}`, 'success');
@@ -257,24 +258,25 @@ function ChatInterface() {
         const hiddenMessage = `SYSTEM_STAY_BOOKED Confirmation Ref: ${payload.stay_booking_id}, Property: ${payload.hotel_name}, Room: ${payload.room_no}`;
         handleSend(null, null, hiddenMessage);
         
-        // 🚨 NAYA LOGIC: Generate Itinerary Automatically
+        //Generate Itinerary Automatically
         const bookedPnr = payload.pnr || "UNKNOWN";
         setCurrentPnr(bookedPnr);
         addLog("Generating Smart AI Itinerary...", "waiting");
         
         try {
-            await fetch(`http://localhost:8000/api/trips/${bookedPnr}/generate-itinerary`, {
+
+            await fetch(`${API_BASE}/api/trips/${bookedPnr}/generate-itinerary`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     pnr: bookedPnr,
-                    purpose: "Explore the city", // This is generic; Agent backend prompt will handle details
+                    purpose: "Explore the city", 
                     duration_days: 2,
                     primary_location: "City Center"
                 })
             });
             addLog("Smart Itinerary generated successfully!", "success");
-            // Switch to the 'My Trips' tab automatically
+            
             setActiveTab('trips');
             setSelectedTripPnr(bookedPnr);
         } catch (error) {
@@ -318,7 +320,7 @@ function ChatInterface() {
                   </div>
                 </div>
                 
-                {/* 🚨 NAYA CLEAR CHAT BUTTON YAHAN ADD HUA HAI */}
+                
                 <button 
                     onClick={handleClearChat}
                     title="Clear Chat History"
@@ -373,7 +375,7 @@ function ChatInterface() {
                 <CalendarDays size={16} /> My Bookings
               </button>
               
-              {/* 🚨 NAYA TAB YAHAN ADD KIYA HAI */}
+              
               <button onClick={() => setActiveTab('trips')} className={`text-[14px] font-bold h-full flex items-center gap-2 transition-all ${activeTab === 'trips' ? 'text-secondary border-b-2 border-secondary' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}>
                 <Map size={16} /> My Trips
               </button>
@@ -403,17 +405,10 @@ function ChatInterface() {
 
 
 
-              {/* 🚨 VAULT RENDER BLOCK (PASTE YAHAN KARNA HAI) */}
+              
               {activeTab === 'active' && (
                 <div className="flex-1 overflow-y-auto custom-scrollbar animate-in fade-in duration-300 p-8">
-                  {/*<div className="mb-8">
-                    <h2 className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-2">
-                      Your Vault
-                    </h2>
-                    <p className="text-slate-500 dark:text-slate-400 text-[14px] mt-1">
-                      Review and manage your locked travel deployments.
-                    </p>
-                  </div>*/}
+                  
 
                   {activeJourneys.length === 0 ? (
                     <div className="h-64 flex flex-col items-center justify-center text-slate-400 dark:text-slate-600 opacity-60">
@@ -523,20 +518,20 @@ function ChatInterface() {
                   )}
                 </div>
               )}
-              {/* 🚨 VAULT RENDER BLOCK ENDS HERE */}
+              
 
-              {/* 🚨 UPDATED RENDER BLOCK: TRIPS DASHBOARD & ITINERARY VIEWER */}
+              {/*TRIPS DASHBOARD & ITINERARY VIEWER */}
               {activeTab === 'trips' && (
                   <div className="h-full flex flex-col animate-in fade-in duration-300">
                       
-                      {/* DASHBOARD LIST VIEW (If no specific trip is selected) */}
+                      {/* DASHBOARD LIST VIEW  */}
                       {!selectedTripPnr ? (
                           <div className="flex-1">
                               <div className="flex justify-between items-center mb-6">
                                   <h2 className="text-xl font-extrabold text-slate-800 dark:text-white">Your Travel Archives</h2>
                               </div>
                               
-                              {/* Filter only Completed bookings that actually have itinerary_data */}
+                              
                               {dbBookings.filter(b => b.status === "Completed" && b.itinerary_data).length > 0 ? (
                                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                       {dbBookings.filter(b => b.status === "Completed" && b.itinerary_data).map((trip, idx) => {
@@ -563,7 +558,7 @@ function ChatInterface() {
                                                       onClick={async (e) => {
                                                           e.stopPropagation(); 
                                                           setDbBookings(prev => prev.filter(b => b.pnr !== trip.pnr));
-                                                          try { await fetch(`http://localhost:8000/api/bookings/${trip.pnr}`, { method: 'DELETE' }); } catch(err){}
+                                                          try { await fetch(`${API_BASE}/api/bookings/${trip.pnr}`, { method: 'DELETE' }); } catch(err){}
                                                       }}
                                                       className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all opacity-0 group-hover:opacity-100"
                                                   >
@@ -620,7 +615,7 @@ function ChatInterface() {
                   ) : (
                     <div className={`transition-all duration-700 ${isSearching ? 'opacity-30 blur-[2px] pointer-events-none scale-[0.98]' : 'opacity-100 scale-100'}`}>
                       
-                      {/* 🏨 RENDER HOTELS/RETIRING ROOMS IF ACTIVE */}
+                      {/* RENDER HOTELS IF ACTIVE */}
                       {showAccommodations && accommodationResults && !bookingSuccessData && (
                         <div className="space-y-6">
                            <div className="bg-blue-500/10 border border-blue-500/20 p-5 rounded-2xl flex items-start gap-4">
@@ -674,7 +669,7 @@ function ChatInterface() {
               
                       
   
-                      {/* 🎉 SUCCESS STATE FOR ACCOMMODATIONS */}
+                      {/* SUCCESS STATE FOR ACCOMMODATIONS */}
                       {showAccommodations && bookingSuccessData && (
                         <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-3xl p-10 text-center animate-in zoom-in-95 duration-500 max-w-2xl mx-auto mt-10">
                            <div className="w-20 h-20 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-6 shadow-[0_0_30px_rgba(16,185,129,0.2)]">
@@ -701,7 +696,7 @@ function ChatInterface() {
                         </div>
                       )}
 
-                      {/* 🚆 RENDER TRAINS/FLIGHTS IF ACTIVE */}
+                      {/*RENDER TRAINS/FLIGHTS IF ACTIVE */}
                       {!showAccommodations && (
                         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                         {liveTrains.map((train, idx) => {
@@ -753,7 +748,7 @@ function ChatInterface() {
                   )}
                 </>
               )}
-              {/* 🚨 NAYA BLOCK: MY BOOKINGS (HISTORY) */}
+              {/* MY BOOKINGS (HISTORY) */}
               {activeTab === 'history' && (
                 <div className="flex-1 overflow-y-auto custom-scrollbar animate-in fade-in duration-300 p-8">
                   <div className="mb-8">
@@ -772,12 +767,12 @@ function ChatInterface() {
                       {dbBookings.map((booking, idx) => (
                         <div key={idx} className="bg-white dark:bg-slate-800/80 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700/80 flex flex-col gap-4 relative group">
                           
-                          {/* DELETE BUTTON */}
+                          
                           <button 
                             onClick={async (e) => {
                                 e.stopPropagation();
                                 setDbBookings(prev => prev.filter(b => b.pnr !== booking.pnr));
-                                try { await fetch(`http://localhost:8000/api/bookings/${booking.pnr}`, { method: 'DELETE' }); } catch(err){}
+                                try { await fetch(`${API_BASE}/api/bookings/${booking.pnr}`, { method: 'DELETE' }); } catch(err){}
                             }}
                             className="absolute top-4 right-4 p-2 text-slate-400 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all opacity-0 group-hover:opacity-100"
                             title="Delete Booking"
@@ -830,7 +825,7 @@ function ChatInterface() {
         </div>
       </div>
 
-      {/* 🚨 DYNAMIC DETAILS MODAL FOR HOTELS 🚨 */}
+      {/* DYNAMIC DETAILS MODAL FOR HOTELS  */}
       {selectedHotel && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => { setSelectedHotel(null); setSelectedRoomType(null); }}>
           <div className="bg-[#0B1120] rounded-3xl w-full max-w-lg shadow-2xl border border-slate-700 overflow-hidden flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
@@ -997,14 +992,12 @@ function ChatInterface() {
   );
 }
 
-// ==========================================
 // COMPONENT 2: THE SECURE CHECKOUT PAGE (TRAINS/FLIGHTS)
-// ==========================================
 function CheckoutPage() {
   const { draftId } = useParams();
   const [draftData, setDraftData] = useState(null);
   const [activeTrain, setActiveTrain] = useState(null);
-  const [passengers, setPassengers] = useState([{name: "", age: "", gender: "Male"}]); // 🚨 UPDATE 1: Added Gender Default
+  const [passengers, setPassengers] = useState([{name: "", age: "", gender: "Male"}]); 
   const [coach, setCoach] = useState('');
   
   const [step, setStep] = useState(1); 
@@ -1016,11 +1009,11 @@ function CheckoutPage() {
     const savedTrain = JSON.parse(localStorage.getItem('nexusActiveTrain') || '{}');
     if (savedTrain && savedTrain.Train_Name) {
       setActiveTrain(savedTrain);
-      // 🚨 NAYA SAFE PARSING LOGIC
+      
       try { 
           let rawPassengers = savedDraft.passengers || '[]';
           
-          // Agar LLM ne single quotes ('') bheje hain, toh usko double quotes ("") mein badlo
+          
           if (typeof rawPassengers === 'string') {
               rawPassengers = rawPassengers.replace(/'/g, '"');
           }
@@ -1047,7 +1040,7 @@ function CheckoutPage() {
   if (!activeTrain) return <div className="h-screen bg-slate-900 flex items-center justify-center text-white font-bold">Loading / Invalid Link</div>;
 
   const coachData = activeTrain.Availability_and_Fares[coach] || {};
-  const baseFare = parseInt(coachData?.fare?.toString().replace(/[^0-9]/g, '') || 0); // 🚨 SAFE STRING CAST
+  const baseFare = parseInt(coachData?.fare?.toString().replace(/[^0-9]/g, '') || 0); 
   
   const hasInvalidPassengers = passengers.some(p => !p.name.trim() || !p.age);
   const validPassengerCount = passengers.filter(p => p.name.trim() && p.age).length;
@@ -1057,7 +1050,7 @@ function CheckoutPage() {
     setIsProcessing(true);
     const validPax = passengers.filter(p => p.name.trim() !== '');
     
-    // Save passengers globally for Hotel prefill
+    
     localStorage.setItem('nexusLastPassengers', JSON.stringify(validPax));
     
     setTimeout(() => {
@@ -1077,7 +1070,7 @@ function CheckoutPage() {
        setStep(3);
        setIsProcessing(false);
 
-       // 🚨 UPDATE 3: Added total_amount and is_solo into payload so listener can send it to DB
+       
        const payload = {
            pnr: finalPnr,
            trainName: activeTrain.Train_Name,
@@ -1089,8 +1082,8 @@ function CheckoutPage() {
            bookedClass: coach,
            bookedStatus: coachData.status,
            isFlight: isFlight,
-           total_amount: totalAmount, // For accurate DB entry
-           is_solo: validPax.length === 1 // For accurate DB entry
+           total_amount: totalAmount, 
+           is_solo: validPax.length === 1 
        };
        localStorage.setItem('nexusPaymentSuccess', JSON.stringify(payload));
        
@@ -1160,7 +1153,7 @@ function CheckoutPage() {
                          className="w-20 bg-slate-900 border border-slate-700 p-4 rounded-xl outline-none focus:border-blue-500 font-bold text-center" 
                        />
                        
-                       {/* 🚨 UPDATE 4: Gender Selector UI */}
+                       
                        <select 
                          value={p.gender || "Male"} 
                          onChange={(e) => {const n=[...passengers]; n[i].gender=e.target.value; setPassengers(n)}}
@@ -1239,18 +1232,13 @@ function CheckoutPage() {
   );
 }
 
-// ==========================================
 // COMPONENT 3: NEW SECURE CHECKOUT PAGE (HOTELS)
-// ==========================================
-// ==========================================
-// COMPONENT 3: NEW SECURE CHECKOUT PAGE (HOTELS)
-// ==========================================
 function HotelCheckoutPage() {
   const { draftId } = useParams();
   const [draftData, setDraftData] = useState(null);
   const [passengers, setPassengers] = useState([]);
   const [rooms, setRooms] = useState(1); 
-  const [days, setDays] = useState(1); // 🚨 NEW STATE: Days of Stay
+  const [days, setDays] = useState(1); 
   const [step, setStep] = useState(1); 
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -1260,11 +1248,11 @@ function HotelCheckoutPage() {
     if (savedDraft && savedDraft.hotel_name) {
       setDraftData(savedDraft);
       
-      // 🚨 AUTO-PREFILL LOGIC (Fixed)
+      
       const lastPax = JSON.parse(localStorage.getItem('nexusLastPassengers') || 'null');
       if (lastPax && lastPax.length > 0) {
           setPassengers(lastPax);
-          setRooms(Math.max(1, Math.ceil(lastPax.length / 2))); // Auto-calculate rooms needed
+          setRooms(Math.max(1, Math.ceil(lastPax.length / 2))); 
       } else {
           setPassengers([{name: "Yogesh", age: 21}]);
       }
@@ -1273,7 +1261,7 @@ function HotelCheckoutPage() {
 
   if (!draftData) return <div className="h-screen bg-slate-900 flex items-center justify-center text-white font-bold">Loading Secure Draft...</div>;
 
-  // 🚨 DYNAMIC PRICING LOGIC
+  //DYNAMIC PRICING LOGIC
   const baseFare = parseInt(draftData.price) || 0;
   const taxes = rooms * days * 150; 
   const totalAmount = (baseFare * rooms * days) + taxes; 
@@ -1282,14 +1270,15 @@ function HotelCheckoutPage() {
     setIsProcessing(true);
     
     try {
-        const response = await fetch('http://localhost:8000/api/accommodations/book', {
+        const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+        const response = await fetch(`${API_BASE}/api/accommodations/book`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               pnr: draftData.pnr || "CAB9998887",
               option_id: "HTL-BOOKED",
               option_name: `${draftData.hotel_name} (${draftData.room_type} | ${days} Nights)`,
-              price: totalAmount, // The dynamically calculated total will go to DB
+              price: totalAmount, 
               passengers: passengers.filter(p => p.name.trim() !== '')
             })
         });
@@ -1301,7 +1290,7 @@ function HotelCheckoutPage() {
                hotel_name: draftData.hotel_name,
                room_no: resData.room_no,
                stay_booking_id: resData.stay_booking_id,
-               // 🚨 DYNAMIC FIX: Backend ka bheja hua proper PNR use karo!
+               
                pnr: resData.pnr 
             }));
             setStep(3);
@@ -1345,7 +1334,7 @@ function HotelCheckoutPage() {
                </div>
             </div>
 
-            {/* 🚨 UPDATED: DYNAMIC ROOM & DAYS SELECTOR */}
+            {/*UPDATED: DYNAMIC ROOM & DAYS SELECTOR */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
                {/* Rooms */}
                <div className="flex justify-between items-center bg-slate-800/50 p-5 rounded-2xl border border-slate-700/50">

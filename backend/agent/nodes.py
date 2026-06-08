@@ -12,43 +12,47 @@ load_dotenv()
 gemini_api_key = os.getenv("GEMINI_API_KEY")
 groq_api_key = os.getenv("GROQ_API_KEY")
 
-# Gemini Initialization
+
 llm = ChatGoogleGenerativeAI(
-    model="gemini-2.5-flash",
-    google_api_key=gemini_api_key,
-    temperature=0
+    model="gemini-2.5-flash", google_api_key=gemini_api_key, temperature=0
 )
 
 
 llm_with_tools = llm.bind_tools(travel_tools)
 tool_node = ToolNode(travel_tools)
 
-# Safe Database Connection
+
 try:
-    sync_db = MongoClient("mongodb://localhost:27017").nexustravel
+    MONGO_URL = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+    sync_db = MongoClient(MONGO_URL).nexustravel
 except Exception as e:
     print(f"DEBUG: Database connection failed: {e}")
     sync_db = None
 
+
 def chatbot_node(state: AgentState):
     import datetime
-    messages = state["messages"] 
-    
-    # Exact date aur time dono fetch karo
+
+    messages = state["messages"]
+
     current_datetime = datetime.datetime.now().strftime("%A, %B %d, %Y at %I:%M %p")
-    
-    # 🧠 Safe DB Context Fetching
+
     history_str = "No past bookings found."
     if sync_db is not None:
         try:
-            recent_bookings = list(sync_db.bookings.find({}, {"_id": 0}).sort("timestamp", -1).limit(5))
+            recent_bookings = list(
+                sync_db.bookings.find({}, {"_id": 0}).sort("timestamp", -1).limit(5)
+            )
             if recent_bookings:
-                history_str = "\n".join([f"- PNR {b['pnr']}: {b['journey']} (Booked on: {b.get('timestamp', '')[:10]})" for b in recent_bookings])
+                history_str = "\n".join(
+                    [
+                        f"- PNR {b['pnr']}: {b['journey']} (Booked on: {b.get('timestamp', '')[:10]})"
+                        for b in recent_bookings
+                    ]
+                )
         except Exception:
             history_str = "Database offline."
-    
-    # 🔥 ULTIMATE STRICT SYSTEM PROMPT
-    
+
     dynamic_system_prompt = f"""You are Agentra, an elite transit orchestrator. 
     CURRENT SYSTEM DATE AND TIME: {current_datetime}.
     
@@ -120,48 +124,63 @@ def chatbot_node(state: AgentState):
          
     3. NEVER use asterisks (like ** or *) in your text.
     
-    """ 
-    
-    
-    # 🚨 FIX FOR GEMINI 400 ERROR:
-    # Retain the exact full alternating history, just replace/insert the SystemMessage safely.
+    """
+
     valid_history = [m for m in messages if m.type != "system"]
     valid_history.insert(0, SystemMessage(content=dynamic_system_prompt))
-        
-    # 🚨 THE SMART INTERCEPTOR (Prevents Hallucination & Forces Tools Safely)
+
     last_msg = messages[-1] if messages else None
-    
+
     if last_msg and last_msg.type == "human":
         msg_text = last_msg.content.lower().strip()
-        
-        # Look at what the AI asked in the previous message to prevent cross-triggering
-        ai_msg = messages[-2] if len(messages) >= 2 and messages[-2].type == "ai" else None
+
+        ai_msg = (
+            messages[-2] if len(messages) >= 2 and messages[-2].type == "ai" else None
+        )
         ai_text = ai_msg.content.lower() if ai_msg else ""
-        
+
         try:
             # SCENARIO 1: Weather Check
             is_weather_intent = "weather" in msg_text or "intel" in msg_text
-            is_weather_yes = msg_text in ["yes", "yeah", "yep", "sure", "please"] and ("weather" in ai_text or "intel" in ai_text)
-            
+            is_weather_yes = msg_text in ["yes", "yeah", "yep", "sure", "please"] and (
+                "weather" in ai_text or "intel" in ai_text
+            )
+
             if is_weather_intent or is_weather_yes:
-                forced_llm = llm.bind_tools(travel_tools, tool_choice="get_destination_intel")
-                return {"messages": [forced_llm.invoke(valid_history)], "results_ready": True}
-                
+                forced_llm = llm.bind_tools(
+                    travel_tools, tool_choice="get_destination_intel"
+                )
+                return {
+                    "messages": [forced_llm.invoke(valid_history)],
+                    "results_ready": True,
+                }
+
             # SCENARIO 2: Train Locked (Analysis Phase)
             if "i have locked the train" in msg_text:
-                forced_llm = llm.bind_tools(travel_tools, tool_choice="predict_train_delay")
-                return {"messages": [forced_llm.invoke(valid_history)], "results_ready": True}
-                
+                forced_llm = llm.bind_tools(
+                    travel_tools, tool_choice="predict_train_delay"
+                )
+                return {
+                    "messages": [forced_llm.invoke(valid_history)],
+                    "results_ready": True,
+                }
+
             # SCENARIO 3: Draft Booking (Passenger Info)
             if "names and ages" in ai_text and len(msg_text) > 3:
-                forced_llm = llm.bind_tools(travel_tools, tool_choice="create_draft_booking")
-                return {"messages": [forced_llm.invoke(valid_history)], "results_ready": True}
-                
-        except Exception as e:
-            print(f"DEBUG: Forced tool call failed gracefully. Falling back to normal flow. Error: {e}")
-            pass # Failsafe: Falls back to standard chat instead of crashing
+                forced_llm = llm.bind_tools(
+                    travel_tools, tool_choice="create_draft_booking"
+                )
+                return {
+                    "messages": [forced_llm.invoke(valid_history)],
+                    "results_ready": True,
+                }
 
-    # 4. Standard Chat Flow (No Interceptor Triggered)
+        except Exception as e:
+            print(
+                f"DEBUG: Forced tool call failed gracefully. Falling back to normal flow. Error: {e}"
+            )
+            pass  # Failsafe: Falls back to standard chat instead of crashing
+
     response = llm_with_tools.invoke(valid_history)
-    
+
     return {"messages": [response], "results_ready": True}

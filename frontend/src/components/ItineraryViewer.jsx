@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { MapPin, Clock, Ticket, ExternalLink, Star } from 'lucide-react';
 import './ItineraryViewer.css';
 
-// Sub-component to handle Pexels Image Fetching independently
+
 const PlaceCard = ({ place }) => {
     const [imageUrl, setImageUrl] = useState('');
     const [isLoading, setIsLoading] = useState(true);
@@ -10,8 +10,8 @@ const PlaceCard = ({ place }) => {
     useEffect(() => {
         const fetchImage = async () => {
             try {
-                // Adjust this depending on Vite (import.meta.env) or CRA (process.env)
-                const apiKey = import.meta.env.VITE_PEXELS_API_KEY || process.env.REACT_APP_PEXELS_API_KEY;
+                const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+                const apiKey = import.meta.env.VITE_PEXELS_API_KEY;
                 const searchQuery = encodeURIComponent(`${place.name} ${place.map_query.split(',')[0]}`);
                 
                 const response = await fetch(`https://api.pexels.com/v1/search?query=${searchQuery}&per_page=1`, {
@@ -22,7 +22,7 @@ const PlaceCard = ({ place }) => {
                 if (data.photos && data.photos.length > 0) {
                     setImageUrl(data.photos[0].src.large);
                 } else {
-                    // Fallback if Pexels finds nothing
+                    
                     setImageUrl(`https://loremflickr.com/800/600/${encodeURIComponent(place.name.split(' ')[0])},landmark/all`);
                 }
             } catch (err) {
@@ -76,7 +76,8 @@ const ItineraryViewer = ({ pnr }) => {
     useEffect(() => {
         const fetchItinerary = async () => {
             try {
-                const response = await fetch(`http://localhost:8000/api/trips/${pnr}/itinerary`);
+                const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+                const response = await fetch(`${API_BASE}/api/trips/${pnr}/itinerary`);
                 const result = await response.json();
                 if (result.status === 'success') {
                     setItinerary(result.data.itinerary);

@@ -2,19 +2,23 @@ from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Dict, List, Optional, Any
 
+
 class MessageDict(BaseModel):
     sender: str
     text: str
 
+
 class ChatRequest(BaseModel):
     message: str
-    history: List[MessageDict] = []  
+    history: List[MessageDict] = []
     session_id: Optional[str] = "guest_123"
+
 
 class LogEntry(BaseModel):
     time: str
     text: str
     type: str
+
 
 class ChatResponse(BaseModel):
     agent_message: str
@@ -22,8 +26,8 @@ class ChatResponse(BaseModel):
     results_ready: bool
     action_data: Optional[Any] = None
     smart_chips: Optional[List[str]] = []
-    
-# --- NEW: Yeh Invoice/Expense track karne ke liye hai ---
+
+
 class ExpenseItem(BaseModel):
     item_id: str
     expense_type: str = Field(..., description="TRAIN_TICKET, CAB, FOOD, HOTEL")
@@ -32,7 +36,7 @@ class ExpenseItem(BaseModel):
     status: str = "BOOKED"
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
-# --- UPDATED: Project Shakti + Invoice Integration ---
+
 class BookingSchema(BaseModel):
     pnr: str
     chat_id: str
@@ -42,17 +46,17 @@ class BookingSchema(BaseModel):
     passenger_name: str
     gender: str = Field(..., description="Male, Female, or Other")
     is_solo: bool = False
-    
-    passengers: List[Dict[str, Any]] = [] # 🚨 BAS YEH EK NAYI LINE ADD KARNI HAI
-    
+
+    passengers: List[Dict[str, Any]] = []
+
     seats: str
-    
-    # Nayi properties jo total kharcha aur list of expenses track karengi
-    expenses: List[ExpenseItem] = [] 
+
+    expenses: List[ExpenseItem] = []
     total_amount: float = 0.0
-    
+
     status: str = "Confirmed & Paid"
     timestamp: datetime = Field(default_factory=datetime.utcnow)
+
 
 class StayRequest(BaseModel):
     pnr: str
