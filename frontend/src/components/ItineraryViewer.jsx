@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { MapPin, Clock, Ticket, ExternalLink, Star } from 'lucide-react';
 import './ItineraryViewer.css';
-
+import { useUser } from '@clerk/clerk-react';
 
 const PlaceCard = ({ place }) => {
     const [imageUrl, setImageUrl] = useState('');
@@ -70,6 +70,7 @@ const PlaceCard = ({ place }) => {
 };
 
 const ItineraryViewer = ({ pnr }) => {
+    const { user } = useUser();
     const [itinerary, setItinerary] = useState(null);
     const [loading, setLoading] = useState(true);
 
@@ -77,10 +78,33 @@ const ItineraryViewer = ({ pnr }) => {
         const fetchItinerary = async () => {
             try {
                 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-                const response = await fetch(`${API_BASE}/api/trips/${pnr}/itinerary`);
+                
+                const response = await fetch(`${API_BASE}/api/trips/${pnr}/itinerary`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-user-id': user?.id 
+                    }
+                });
+
                 const result = await response.json();
                 if (result.status === 'success') {
-                    setItinerary(result.data.itinerary);
+                   
+                    let rawData = result.data;
+                    
+                    
+                    let itineraryArray = [];
+                    if (Array.isArray(rawData)) {
+                        itineraryArray = rawData;
+                    } else if (rawData && Array.isArray(rawData.itinerary)) {
+                        itineraryArray = rawData.itinerary;
+                    } else {
+                        console.error("Agentra returned unknown format:", rawData);
+                    }
+                    
+                    setItinerary(itineraryArray);
+                } else {
+                     console.error("Backend error:", result.message);
                 }
             } catch (error) {
                 console.error("Failed to fetch itinerary", error);
@@ -89,7 +113,7 @@ const ItineraryViewer = ({ pnr }) => {
             }
         };
         if (pnr) fetchItinerary();
-    }, [pnr]);
+    }, [pnr, user?.id]); 
 
     if (loading) return <div className="itinerary-loader"><div className="spinner"></div><p>Agentra is structuring your plan...</p></div>;
     if (!itinerary) return <div className="itinerary-empty">No itinerary planned yet.</div>;

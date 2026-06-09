@@ -6,7 +6,7 @@ import requests
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from pymongo import MongoClient
-from backend.main import FRONTEND_URL
+
 from services.railway_api import calculate_origin_date
 from langchain_core.tools import tool
 from serpapi import GoogleSearch
@@ -15,6 +15,7 @@ load_dotenv()
 
 MONGO_URL = os.getenv("MONGO_URI", "mongodb://localhost:27017")
 sync_db = MongoClient(MONGO_URL).nexustravel
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
 
 @tool
@@ -563,6 +564,7 @@ def send_booking_confirmation(
     passengers_raw_json: str,
     train_number: str,
     baseline_probability: int,
+    user_id: str,
     flight_number: str = "N/A",
     travel_class: str = "2A",
     fare: float = 1500.0,
@@ -576,6 +578,7 @@ def send_booking_confirmation(
     1. You MUST execute this tool to save the booking to MongoDB.
     2. 'passengers_raw_json' MUST be the EXACT raw JSON array string from the SYSTEM prompt. DO NOT summarize or format it.
     3. 'travel_date' MUST be inferred exactly from the user's context (YYYY-MM-DD).
+    4. 'user_id' MUST be extracted exactly from the system prompt or conversation history context. Do not guess it.
 
     4. 🚨 WAITLIST & PROBABILITY DIRECTIVE (CRITICAL):
        - For TRAINS: You MUST extract the 'predictionPercentage' (e.g., 49, 74) from the search_trains API result and pass it strictly as an integer into 'baseline_probability'. DO NOT GUESS THIS VALUE.
@@ -713,6 +716,7 @@ def send_booking_confirmation(
     booking_payload = {
         "pnr": pnr,
         "chat_id": chat_id,
+        "user_id": user_id,
         "journey": journey_details,
         "train_number": train_number,
         "flight_number": flight_number,

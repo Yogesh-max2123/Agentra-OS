@@ -502,7 +502,7 @@ FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[FRONTEND_URL, "http://localhost:5173", "http://localhost:3000"],
+    allow_origins=[FRONTEND_URL, "http://localhost:5173", "http://localhost:3000", "*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -525,19 +525,35 @@ MONGO_URL = os.getenv("MONGO_URI", "mongodb://localhost:27017")
 db = MongoClient(MONGO_URL).nexustravel
 
 
+from fastapi import Header
+
+
 @app.get("/api/bookings")
-async def get_all_bookings():
+async def get_all_bookings(x_user_id: str = Header(None)): 
     try:
-        bookings = list(db.bookings.find({}, {"_id": 0}).sort("timestamp", -1))
+      
+        if not x_user_id:
+            return {"status": "error", "message": "Unauthorized: User ID missing"}
+
+        
+        bookings = list(db.bookings.find({"user_id": x_user_id}, {"_id": 0}).sort("timestamp", -1))
+        
         return {"status": "success", "data": bookings}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
 
 @app.post("/api/bookings")
-async def create_new_booking(booking: BookingSchema):
+async def create_new_booking(booking: BookingSchema, x_user_id: str = Header(None)): 
     try:
+        if not x_user_id:
+            return {"status": "error", "message": "Unauthorized: User ID missing"}
+
         booking_data = booking.model_dump()
+        
+        
+        booking_data["user_id"] = x_user_id 
+        
         booking_data["departure_time"] = booking_data["departure_time"].isoformat()
         booking_data["arrival_time"] = booking_data["arrival_time"].isoformat()
         booking_data["timestamp"] = datetime.now().isoformat()
@@ -559,46 +575,30 @@ async def create_new_booking(booking: BookingSchema):
 # EVENT-DRIVEN ORCHESTRATION ENDPOINTS
 # ---------------------------------------------------------
 @app.post("/api/test-pre-departure")
-async def test_pre_departure(
-    background_tasks: BackgroundTasks, chat_id: str = "YOUR_TELEGRAM_CHAT_ID"
-):
+async def test_pre_departure(background_tasks: BackgroundTasks, chat_id: str = "YOUR_TELEGRAM_CHAT_ID"):
     background_tasks.add_task(trigger_pre_departure_workflow, chat_id)
     return {"status": "Triggered background chart prep and live tracking."}
 
-
 @app.post("/api/test-post-boarding")
-async def test_post_boarding(
-    background_tasks: BackgroundTasks, chat_id: str = "YOUR_CHAT_ID"
-):
+async def test_post_boarding(background_tasks: BackgroundTasks, chat_id: str = "YOUR_CHAT_ID"):
     background_tasks.add_task(trigger_post_boarding_checkin, chat_id, "9286761423")
     return {"status": "Triggered"}
 
-
 @app.post("/api/test-hourly-update")
-async def test_hourly_update(
-    background_tasks: BackgroundTasks, chat_id: str = "YOUR_CHAT_ID"
-):
-    background_tasks.add_task(
-        trigger_hourly_live_tracking, chat_id, "9286761423", "12004"
-    )
+async def test_hourly_update(background_tasks: BackgroundTasks, chat_id: str = "YOUR_CHAT_ID"):
+    background_tasks.add_task(trigger_hourly_live_tracking, chat_id, "9286761423", "12004")
     return {"status": "Triggered"}
 
 
 @app.post("/api/test-wake-up")
-async def test_wake_up(
-    background_tasks: BackgroundTasks, chat_id: str = "YOUR_CHAT_ID"
-):
+async def test_wake_up(background_tasks: BackgroundTasks, chat_id: str = "YOUR_CHAT_ID"):
     background_tasks.add_task(trigger_wake_up_call, chat_id, "9286761423")
     return {"status": "Triggered"}
 
-
 @app.post("/api/test-shakti")
 async def test_shakti(background_tasks: BackgroundTasks, chat_id: str = "YOUR_CHAT_ID"):
-    background_tasks.add_task(
-        trigger_project_shakti_onboarding, chat_id, "9286761423", "Priya"
-    )
+    background_tasks.add_task(trigger_project_shakti_onboarding, chat_id, "9286761423", "Priya")
     return {"status": "Triggered Shakti Workflow"}
-
 
 def send_real_sms(phone_number: str, message: str):
     """Sends a real SMS using Fast2SMS API"""
@@ -1702,11 +1702,14 @@ class BookStayRequest(BaseModel):
 
 
 @app.post("/api/accommodations/book")
-async def book_accommodation(req: BookStayRequest):
+async def book_accommodation(req: BookStayRequest, x_user_id: str = Header(None)): # 👈 Added Header
+    if not x_user_id:
+        return {"status": "error", "message": "Unauthorized"}
 
     if not req.pnr or req.pnr == "CAB9998887":
         real_booking = db.bookings.find_one(
             {
+                "user_id": x_user_id, # 👈 Added Filter
                 "status": {"$regex": "Paid", "$options": "i"},
                 "trip_phase": "AWAITING_ACCOMMODATION",
             }
@@ -1714,7 +1717,7 @@ async def book_accommodation(req: BookStayRequest):
         if real_booking:
             req.pnr = real_booking["pnr"]
 
-    booking = db.bookings.find_one({"pnr": req.pnr})
+    booking = db.bookings.find_one({"pnr": req.pnr, "user_id": x_user_id}) # 👈 Added Filter
     chat_id = booking.get("chat_id") if booking else os.getenv("EMERGENCY_CHAT_ID")
 
     stay_booking_id = f"STAY-{random.randint(10000, 99999)}"
@@ -1728,12 +1731,10 @@ async def book_accommodation(req: BookStayRequest):
         "passengers": req.passengers,
     }
 
-    import datetime
-
     # INVOICE: Push Hotel Cost & UPDATE PHASE
     if booking:
         db.bookings.update_one(
-            {"pnr": req.pnr},
+            {"pnr": req.pnr, "user_id": x_user_id}, # 👈 Added Filter
             {
                 "$set": {
                     "hotel_booking": hotel_data,
@@ -1747,7 +1748,7 @@ async def book_accommodation(req: BookStayRequest):
                         "description": req.option_name,
                         "cost": req.price,
                         "status": "BOOKED",
-                        "timestamp": datetime.datetime.now().isoformat(),
+                        "timestamp": datetime.now().isoformat(),
                     }
                 },
                 "$inc": {"total_amount": req.price},
@@ -1755,7 +1756,7 @@ async def book_accommodation(req: BookStayRequest):
         )
 
         # FINAL INVOICE TRIGGER: Generate PDF and send via Telegram
-        updated_booking = db.bookings.find_one({"pnr": req.pnr})
+        updated_booking = db.bookings.find_one({"pnr": req.pnr, "user_id": x_user_id}) # 👈 Added Filter
         if updated_booking and chat_id:
             try:
                 pdf_path = generate_trip_invoice(updated_booking)
@@ -1798,14 +1799,16 @@ async def book_accommodation(req: BookStayRequest):
         "pnr": req.pnr,
     }
 
-
 # ---------------------------------------------------------
 # 📊 NEW ROUTE: FETCH INVOICE SUMMARY FOR REACT
 # ---------------------------------------------------------
 @app.get("/api/trips/{pnr}/invoice-summary")
-async def get_invoice_summary(pnr: str):
+async def get_invoice_summary(pnr: str, x_user_id: str = Header(None)): # 👈 Added Header
     try:
-        trip = db.bookings.find_one({"pnr": pnr})
+        if not x_user_id:
+            return {"status": "error", "message": "Unauthorized"}
+            
+        trip = db.bookings.find_one({"pnr": pnr, "user_id": x_user_id}) # 👈 Added Filter
         if not trip:
             return {"status": "error", "message": "Trip not found"}
 
@@ -1851,10 +1854,13 @@ class ItineraryRequest(BaseModel):
 
 
 @app.post("/api/trips/{pnr}/generate-itinerary")
-async def generate_smart_itinerary(pnr: str, req: ItineraryRequest):
+async def generate_smart_itinerary(pnr: str, req: ItineraryRequest, x_user_id: str = Header(None)): # 👈 Added Header
     try:
-        # 1. FETCH DIRECTLY USING PROPER PNR
-        booking = db.bookings.find_one({"pnr": pnr, "status": "Completed"})
+        if not x_user_id:
+            return {"status": "error", "message": "Unauthorized"}
+
+        # 1. FETCH DIRECTLY USING PROPER PNR AND USER ID
+        booking = db.bookings.find_one({"pnr": pnr, "status": "Completed", "user_id": x_user_id}) # 👈 Added Filter
         if not booking:
             return {"status": "error", "message": f"Booking not found for PNR {pnr}"}
 
@@ -1878,7 +1884,6 @@ async def generate_smart_itinerary(pnr: str, req: ItineraryRequest):
         3. 🎯 STRICT PURPOSE ALIGNMENT: The purpose is '{req.purpose}'. 
            - If Business/Work: Focus strictly on business districts, quick corporate lunches, networking spots, and very light evening relaxation. Do NOT pack the day with historical sightseeing.
            - If Leisure/Tourism: Maximize sightseeing, local food, and cultural exploration.
-        
         
         - NEVER output plain text. You MUST output ONLY valid JSON matching this exact structure:
         
@@ -1928,9 +1933,9 @@ async def generate_smart_itinerary(pnr: str, req: ItineraryRequest):
             print(f"RAW TEXT WAS: {raw_text}")
             return {"status": "error", "message": f"JSON Parse Failed: {json_err}"}
 
-        # 4. SAVE ITINERARY DIRECTLY TO THIS SPECIFIC PNR
+        # 4. SAVE ITINERARY DIRECTLY TO THIS SPECIFIC PNR AND USER
         update_result = db.bookings.update_one(
-            {"pnr": pnr}, {"$set": {"itinerary_data": itinerary_json}}
+            {"pnr": pnr, "user_id": x_user_id}, {"$set": {"itinerary_data": itinerary_json}} # 👈 Added Filter
         )
 
         print(
@@ -1944,10 +1949,12 @@ async def generate_smart_itinerary(pnr: str, req: ItineraryRequest):
 
 
 @app.get("/api/trips/{pnr}/itinerary")
-async def get_saved_itinerary(pnr: str):
+async def get_saved_itinerary(pnr: str, x_user_id: str = Header(None)): 
     try:
-
-        booking = db.bookings.find_one({"pnr": pnr})
+        if not x_user_id:
+             return {"status": "error", "message": "Unauthorized"}
+             
+        booking = db.bookings.find_one({"pnr": pnr, "user_id": x_user_id}) 
 
         if booking and "itinerary_data" in booking:
             return {"status": "success", "data": booking["itinerary_data"]}
