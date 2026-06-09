@@ -14,7 +14,7 @@ const LandingPage = () => {
           {/* Logo Wrapped in a White Pill for JPEG compatibility */}
           <div className="flex items-center space-x-3 cursor-pointer">
             <div className="bg-white p-1.5 rounded-xl shadow-[0_0_15px_rgba(59,130,246,0.2)]">
-              <img src="logo2.png" alt="Agentra Logo" className="h-9 w-auto mix-blend-multiply" />
+              <img src="/logo2.png" alt="Agentra Logo" className="h-9 w-auto mix-blend-multiply" />
             </div>
             <span className="text-xl font-bold text-white tracking-wide">Agentra</span>
           </div>
@@ -191,7 +191,7 @@ const LandingPage = () => {
           <div className="col-span-1 md:col-span-2">
             <div className="flex items-center mb-6 space-x-3">
                <div className="bg-white p-1 rounded-lg">
-                 <img src="logo2.png" alt="Agentra Logo" className="h-8 w-auto mix-blend-multiply" />
+                 <img src="/logo2.png" alt="Agentra Logo" className="h-8 w-auto mix-blend-multiply" />
                </div>
                <span className="text-xl font-bold text-white tracking-wide">Agentra</span>
             </div>
